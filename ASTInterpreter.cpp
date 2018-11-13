@@ -21,25 +21,25 @@ public:
     virtual ~InterpreterVisitor() {}
     // Binary Operator
     virtual void VisitBinaryOperator (BinaryOperator * bop) {
-      cout << "VisitBinaryOperator" << endl;
+      // cout << "VisitBinaryOperator" << endl;
       VisitStmt(bop);
       mEnv->binop(bop);
     }
     // Declaration referance expression
     virtual void VisitDeclRefExpr(DeclRefExpr * expr) {
-      cout << "VisitDeclRefExpr" << endl;
+      // cout << "VisitDeclRefExpr" << endl;
       VisitStmt(expr);
       mEnv->declref(expr);
     }
     // Cast expression
     virtual void VisitCastExpr(CastExpr * expr) {
-      cout << "VisitCastExpr" << endl;
+      // cout << "VisitCastExpr" << endl;
       VisitStmt(expr);
       mEnv->cast(expr);
     }
     // Call expression
     virtual void VisitCallExpr(CallExpr * call) {
-      cout << "VisitCallExpr" << endl;
+      // cout << "VisitCallExpr" << endl;
       VisitStmt(call);
       if(FunctionDecl * funcdecl = mEnv->call(call)) {
         VisitStmt(funcdecl->getBody());
@@ -49,19 +49,19 @@ public:
     }
     // Declaration statement
     virtual void VisitDeclStmt(DeclStmt * declstmt) {
-      cout << "VisitDeclStmt " << endl;
+      // cout << "VisitDeclStmt " << endl;
       VisitStmt(declstmt);  //  int a = 0;
       mEnv->decl(declstmt);
     }
     // Integer
     virtual void VisitIntegerLiteral(IntegerLiteral * integer) {      
-      cout << "VisitIntegerLiteral" << endl;
+      // cout << "VisitIntegerLiteral" << endl;
       // VisitStmt(integer);
       mEnv->integer(integer);
     }
     // While
     virtual void VisitWhileStmt(WhileStmt * whilestmt) {
-      cout << "VisitWhileStmt" << endl;
+      // cout << "VisitWhileStmt" << endl;
       Expr * expr = whilestmt->getCond();
       this->Visit(expr);
       while (mEnv->getCondition(expr)) {
@@ -71,8 +71,8 @@ public:
     }
     // For
     virtual void VisitForStmt(ForStmt * forstmt) {
-      cout << "VisitForStmt" << endl;
-      Stmt * stmt = forstmt->getInit();
+      // cout << "VisitForStmt" << endl;
+      // Stmt * stmt = forstmt->getInit();
       Expr * expr = forstmt->getCond();
       // if (stmt) {
       //     this->Visit(forstmt->getInit());
@@ -87,53 +87,53 @@ public:
     // ImplicitCastExpr
     virtual void VisitImplicitCastExpr(ImplicitCastExpr* imcastexpr) {
       VisitStmt(imcastexpr);
-      cout<< "VisitImplicitCastExpr" << endl;
+      // cout<< "VisitImplicitCastExpr" << endl;
       mEnv->implicitcast(imcastexpr);
     }
     // return
     virtual void VisitReturnStmt(ReturnStmt *returnStmt) {
-        cout<< "VisitReturnStmt" << endl;
+        // cout<< "VisitReturnStmt" << endl;
         VisitStmt(returnStmt);
         mEnv->setReturnVal(returnStmt);
     }
     // unary operator
     virtual void VisitUnaryOperator(UnaryOperator* uop) {
-      cout<< "VisitUnaryOperator" << endl;
+      // cout<< "VisitUnaryOperator" << endl;
       VisitStmt(uop);
       mEnv->unaryOp(uop);
     }
     virtual void VisitUnaryExprOrTypeTraitExpr(UnaryExprOrTypeTraitExpr * unaryExprOrTypeTraitExpr) {
-      cout<< "VisitUnaryExprOrTypeTraitExpr" << endl;
+      // cout<< "VisitUnaryExprOrTypeTraitExpr" << endl;
       mEnv->unaryExprOrTypeTraitExpr(unaryExprOrTypeTraitExpr);
     }
     virtual void VisitArraySubscriptExpr(ArraySubscriptExpr * array) {
-      cout<< "VisitArraySubscriptExpr" << endl;
+      // cout<< "VisitArraySubscriptExpr" << endl;
       VisitStmt(array);
       mEnv->arrayExpr(array);
    }
 
     virtual void VisitParenExpr(ParenExpr * parenExpr) {
-      cout << "ParenExpr " << endl;
+      // cout << "ParenExpr " << endl;
       VisitStmt(parenExpr);
       mEnv->parenExpr(parenExpr);
     } 
 
     virtual void VisitCStyleCastExpr(CStyleCastExpr * cStyleCastExpr) {
-     	cout << "CStyleCastExpr " << endl;
+     	// cout << "CStyleCastExpr " << endl;
      	VisitStmt(cStyleCastExpr);
      	mEnv->cStyleCastExpr(cStyleCastExpr);
     }
     // if 
     virtual void VisitIfStmt(IfStmt * ifstmt) {
-      cout << "ifstmt" << endl;
+      // cout << "ifstmt" << endl;
       Expr * expr = ifstmt->getCond();
       this->Visit(expr);	
-      cout << "switch" << endl;
+      // cout << "switch" << endl;
       if(mEnv->getCondition(expr)) {
-        cout << "condition" << endl;
+        // cout << "condition" << endl;
         this->Visit(ifstmt->getThen());
       } else if(Stmt *elseStmt = ifstmt->getElse()){
-        cout << "else" << endl;
+        // cout << "else" << endl;
         this->Visit(elseStmt);
       }
     }
