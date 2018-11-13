@@ -35,12 +35,12 @@ public:
       return mVars.find(decl)->second;
    }
    void bindStmt(Stmt * stmt, int val) {
-   	cout<< "  bindStmt " << stmt << " val " << val << endl;
+   	cout<< " bindStmt " << stmt << "  val " << val << endl;
 	   mExprs[stmt] = val;
    }
    int getStmtVal(Stmt * stmt) {
-   	cout<< "  getStmtVal " << stmt << endl;
 	   assert (mExprs.find(stmt) != mExprs.end());
+	   cout<< " getStmtVal " << stmt << "  val " << mExprs[stmt] << endl;
 	   return mExprs[stmt];
    }
    void setPC(Stmt * stmt) {
@@ -116,7 +116,7 @@ public:
 
    /// Initialize the Environment
    void init(TranslationUnitDecl * unit) {
-   	cout<< "  init" << endl;
+   	cout<< "init" << endl;
 	   mStack.push_back(StackFrame());	//	global varible
 	   for (TranslationUnitDecl::decl_iterator i =unit->decls_begin(), e = unit->decls_end(); i != e; ++ i) {
 		   if (FunctionDecl * fdecl = dyn_cast<FunctionDecl>(*i) ) {
@@ -126,7 +126,7 @@ public:
 			   else if (fdecl->getName().equals("PRINT")) mOutput = fdecl;
 			   else if (fdecl->getName().equals("main")) mEntry = fdecl;
 		   }else if (VarDecl *vardecl = dyn_cast<VarDecl>(*i)) {
-				cout<< "init VarDecl  " << (vardecl->getDefinition()->getNameAsString()) << endl;
+				cout << "global vardecl" << endl;
 				visitVarDecl(vardecl);
          }
 	   }
@@ -138,29 +138,39 @@ public:
    }
 
    /// !TODO Support comparison operation
-   int binop(BinaryOperator *bop) {
+   void binop(BinaryOperator *bop) {
    	cout<< "  binop" << endl;
 	   Expr * left = bop->getLHS();
 	   Expr * right = bop->getRHS();
-	   cout << "left & right type " << (left->getType().getAsString()) << " " << (right->getType().getAsString())  << endl;
 	   // get operator code
 	   int opCode = bop->getOpcode();
 
 	   // =
 	   if (bop->isAssignmentOp()) {
-	   	cout<< "  binop = " << endl;
+	   	cout<< "  binop = " << bop << endl;
+	   	cout << "left " << left << " " << "left type " << (left->getType().getAsString()) << endl; 
+	   	cout << "right " << right << " " << "right type " << (right->getType().getAsString()) << endl; 
 	   	int val = mStack.back().getStmtVal(right);
 		   if (DeclRefExpr * declexpr = dyn_cast<DeclRefExpr>(left)) {
+   			cout << "binop declrefexpr " << endl;
    			Decl * decl = declexpr->getFoundDecl();
-
+   			val = mStack.back().getStmtVal(right);
 		   	cout << "binop declrefexpr "<< (declexpr->getFoundDecl()->getNameAsString()) << " " << decl << "  " << val << endl;
 		   	mStack.back().bindDecl(decl, val);
 		   } 
 		   if(UnaryOperator * unaryop = dyn_cast<UnaryOperator>(left)){
 				cout << "binop_UnaryOperator " << endl;
 				int addr = mStack.back().getStmtVal(unaryop->getSubExpr());
+				val = mStack.back().getStmtVal(right);
 				mHeap.Update(addr, val);
-        	} 
+        	}
+        	if(auto array = dyn_cast<ArraySubscriptExpr>(left)) {
+        		cout << "binop array " << endl;
+        		int addr = mStack.back().getStmtVal(array);
+        		val = mStack.back().getStmtVal(right);
+        		mHeap.Update(addr, val);
+        		cout << "addr & val "  << addr << " " << val << endl;
+        	}
     		mStack.back().bindStmt(bop, val);
 		   
 	   } else if (bop->isComparisonOp() || bop->isAdditiveOp()
@@ -170,8 +180,9 @@ public:
 		   int valRight = mStack.back().getStmtVal(right);
 		   // left + right
 		   if(opCode == BO_Add) {
-		   	cout<< "  binop + " << endl;
+		   	cout<< "  binop + "  << "val " << (valLeft + valRight) << endl;
 		   	mStack.back().bindStmt(bop, valLeft + valRight);
+
 		   }
 		   // left - right
 		   if(opCode == BO_Sub) {
@@ -185,51 +196,61 @@ public:
 		   // left < right
 		   if(opCode == BO_LT) {
 		   	cout<< "  binop < " << endl;
-		   	if(valLeft < valRight) {
-		   		return 1;
-		   	}
-		   	else {
-		   		return -1;
-		   	}
+		   	if(valLeft < valRight) 
+		   		mStack.back().bindStmt(bop, 1);
+		   	else 
+	   			mStack.back().bindStmt(bop, 0);
 		   }
 		   // left > right
 		   if(opCode == BO_GT) {
-		   	if(valLeft > valRight) {
-		   		return 1;
-		   	}
-		   	else {
-		   		return -1;
-		   	}
+		   	cout<< "  binop > " << endl;
+		   	if(valLeft > valRight) 
+		   		mStack.back().bindStmt(bop, 1);
+		   	else 
+	   			mStack.back().bindStmt(bop, 0);
+		   }
+		   // ==
+		   if(opCode == BO_EQ) {
+		   	if(valLeft == valRight) 
+		   		mStack.back().bindStmt(bop, 1);
+		   	else
+	   			mStack.back().bindStmt(bop, 0);
 		   }
 	   }
-
-	   return 0;
    }
    // decl
    void decl(DeclStmt * declstmt) {
+
 	   for (DeclStmt::decl_iterator it = declstmt->decl_begin(), ie = declstmt->decl_end();it != ie; ++ it) {
 		   Decl * decl = *it;
 		   if (VarDecl * vardecl = dyn_cast<VarDecl>(decl)) {	// if decl is vardecl
-			   cout << "declstmt is vardecl " << (vardecl->getDefinition()->getNameAsString()) << endl;
+			   cout << "declstmt is vardecl " << (vardecl->getDefinition()->getNameAsString()) << " " << vardecl << endl;
 			   if(vardecl->hasInit()) {	
 		   		Expr * expr = vardecl->getInit();			// vardecl to expr
 	   			
-		   		if(UnaryOperator * unaryop = dyn_cast<UnaryOperator>(expr)) {
-             		cout << "init decl UnaryOperator" << endl;
-             		Expr * subExpr = unaryop->getSubExpr();
-             		QualType qualType = subExpr->getType();
-             		cout << "unaryop's subExpr is UnaryOperator? " << (qualType->isPointerType()) << endl;
-
-
-             		int val = mStack.back().getStmtVal(subExpr);
-              		int addr = mHeap.Malloc(1);
-						mHeap.Update(addr, val);
-              		mStack.back().bindDecl(vardecl, addr);
-		   		} else if (IntegerLiteral * integer = dyn_cast<IntegerLiteral>(expr)){
+		   		if (IntegerLiteral * integer = dyn_cast<IntegerLiteral>(expr)){
 		   			cout<< "init decl IntegerLiteral " << endl;
 		   			int val = integer->getValue().getSExtValue();
 		   			mStack.back().bindDecl(vardecl, val);		// binder(refers next statement)			
 		   		} 
+			   } 
+			   if(vardecl->getType()->isArrayType())  {
+			   	cout << "isArrayType" << endl;
+	            // Get array size
+	            auto array = dyn_cast<ConstantArrayType>(vardecl->getType());
+	            assert(array);
+	            uint64_t array_size = array->getSize().getLimitedValue();
+      			cout << "array size " << array_size << endl;
+	            //NOTE that array is placed in heap
+	            int address = mHeap.Malloc((int) (array_size ));
+
+	            ///logp(ArrayVisit, allocatedAddress);
+	            mStack.back().bindDecl(vardecl, address);
+	          
+			   }
+			   if(vardecl->getType()->isPointerType()) {
+			   	cout << "vardecl is pointerType" << endl;
+			   	mStack.back().bindDecl(vardecl, 0);
 			   }
 			   else {
 			   	cout<< " decl not init" << endl;
@@ -250,7 +271,6 @@ public:
         	mStack.back().bindStmt(declref, val);
     	} else if (declref->getType()->isIntegerType()) {
 	   	cout<< "integer  declref " << (declref->getFoundDecl()->getNameAsString()) << " " << declref << endl;
-		   
 		   int val = mStack.back().getDeclVal(decl);
 		   mStack.back().bindStmt(declref, val);
 	   } 
@@ -289,11 +309,14 @@ public:
 		   Expr * decl = callexpr->getArg(0);
 		   val = mStack.back().getStmtVal(decl);
 	   	int addr = mHeap.Malloc(val);
-   		mStack.back().bindStmt(decl, addr);
+   		mStack.back().bindStmt(callexpr, addr);
+   		cout << "mMalloc addr " << callexpr << " " << callee << endl;
 
 	   } else if (callee == mFree) {
+ 			cout << "call mFree"  << endl;
  			Expr * decl = callexpr->getArg(0);
-	   	cout << "free decl " << decl ;
+ 			// decl->getName()
+	   	cout << "free decl " << decl << endl;
  			val = mStack.back().getStmtVal(decl);
  			cout << " free  val "   << val << endl;
  			
@@ -335,35 +358,49 @@ public:
             value = mStack.back().getStmtVal(castedExpr);
             mStack.back().bindStmt(implicitCastExpr, value);
         	} else if (unary_operator) {
+        		cout << "unary_operator" << endl;
             UnaryOperator * uop = dyn_cast<UnaryOperator>(unary_operator);
             if (uop->getOpcode() == UO_Deref) {
             	Expr * expr = uop->getSubExpr();
             	cout << "implicitcast *" << endl;
             	value = mStack.back().getStmtVal(expr);
-              	mStack.back().bindStmt(implicitCastExpr, value);                
+            	int val = mHeap.get(value);
+              	mStack.back().bindStmt(implicitCastExpr, val);                
             }
-
-        } 
+        	} else if (array) {
+            // auto member_size = getArrayMemberSize(array);
+          	value = mStack.back().getStmtVal(castedExpr);
+          	cout << "CK_LValueToRValue array " << castedExpr << " val " << value << endl;
+          	int val = mHeap.get(value);
+           	mStack.back().bindStmt(implicitCastExpr, val);   
+        }
      	}
      	else if(castKind == CK_FunctionToPointerDecay) {
      		cout << "implicitcast_CK_FunctionToPointerDecay" << endl;
+
      		return;
-     	}
-     	else if (castKind == CK_IntegralCast || castKind == CK_ArrayToPointerDecay){
+     	} else if (castKind == CK_IntegralCast || castKind == CK_ArrayToPointerDecay){
         cout << "implicitcast integer || ArraySubscriptExpr" << endl;
         int value = mStack.back().getStmtVal(castedExpr);
         mStack.back().bindStmt(implicitCastExpr, value);
-
-    } 
+    	} else if(castKind == CK_BitCast) {
+    		int value = mStack.back().getStmtVal(castedExpr);
+    		cout << "implicitcast_CK_BitCast " << implicitCastExpr << " val " << value << endl;
+    		mStack.back().bindStmt(implicitCastExpr, value);
+    	}
 
 	}
 
 	void visitVarDecl(VarDecl * vardecl) {
 		cout << "visitVarDecl" << endl;
 		Expr * expr = vardecl->getInit();
-		if (IntegerLiteral * intergerLiteral = dyn_cast<IntegerLiteral>(expr)) {
-			int val = intergerLiteral->getValue().getSExtValue();
-			mStack.back().bindDecl(vardecl, val);
+		if(expr) {
+			if (IntegerLiteral * intergerLiteral = dyn_cast<IntegerLiteral>(expr)) {
+				int val = intergerLiteral->getValue().getSExtValue();
+				mStack.back().bindDecl(vardecl, val);
+			}
+		} else {
+			mStack.back().bindDecl(vardecl, 0);
 		}
 	}
 
@@ -385,10 +422,11 @@ public:
 	void unaryOp(UnaryOperator * uop) {
 		cout << "unaop" << endl;
 		int opCode = uop->getOpcode();
+		Expr * expr = uop->getSubExpr();
 		// * operator
 		if(opCode == UO_Deref) {
 			cout << "* operator" << endl;
-	      Expr * expr = uop->getSubExpr();
+	      
        	cout << "* expr " << expr << endl;
       	// cout << "operator name " << (uop->getOpcodeStr(opCode)) << endl;
 		   int addr = mStack.back().getStmtVal(expr);
@@ -396,6 +434,11 @@ public:
 			int val = mHeap.get(addr);
 			cout << "* val " << val << endl;
 			mStack.back().bindStmt(uop, val);
+		} else if(opCode == UO_Minus) {
+			int val = mStack.front().getStmtVal(expr);
+			val = -val;
+			cout << "- " << val << endl;
+			mStack.front().bindStmt(uop, val);
 		}
 	}
 
@@ -425,14 +468,20 @@ public:
 
  	void arrayExpr(ArraySubscriptExpr * array){
 		llvm::errs()<<"**arrayExpr**"<<"\n";
-		Expr * left = array->getLHS();
-		Expr * right = array->getRHS();
+		Expr * left = array->getBase();
+		Expr * right = array->getIdx();
+		cout << "array base & index  " << left << " " << right << endl; 
 		int addr = mStack.back().getStmtVal(left);
 		int i = mStack.back().getStmtVal(right);
+		cout << "array addr & val  " << addr << " [?] " << i << endl; 
 		int val = mHeap.get(addr + i);
 		mStack.back().bindStmt(array, val);
    }
 
+ 	int getCondition(Expr * expr) { 
+ 		int val = mStack.back().getStmtVal(expr);
+ 		return val;
+ 	}
 
 
 };

@@ -23,7 +23,7 @@ public:
     virtual void VisitBinaryOperator (BinaryOperator * bop) {
       cout << "VisitBinaryOperator" << endl;
       VisitStmt(bop);
-      opFlag = mEnv->binop(bop);
+      mEnv->binop(bop);
     }
     // Declaration referance expression
     virtual void VisitDeclRefExpr(DeclRefExpr * expr) {
@@ -49,7 +49,7 @@ public:
     }
     // Declaration statement
     virtual void VisitDeclStmt(DeclStmt * declstmt) {
-      cout << "VisitDeclStmt" << endl;
+      cout << "VisitDeclStmt " << endl;
       VisitStmt(declstmt);  //  int a = 0;
       mEnv->decl(declstmt);
     }
@@ -62,24 +62,26 @@ public:
     // While
     virtual void VisitWhileStmt(WhileStmt * whilestmt) {
       cout << "VisitWhileStmt" << endl;
-      while(1) {
-        VisitBinaryOperator((BinaryOperator *)whilestmt->getCond());
-        if(opFlag == -1) { // binop return value
-          break;
-        }
-        VisitStmt(whilestmt->getBody());
+      Expr * expr = whilestmt->getCond();
+      this->Visit(expr);
+      while (mEnv->getCondition(expr)) {
+          this->Visit(whilestmt->getBody());
+          this->Visit(expr);
       }
     }
     // For
     virtual void VisitForStmt(ForStmt * forstmt) {
       cout << "VisitForStmt" << endl;
-      while(1) {
-        VisitBinaryOperator((BinaryOperator *)forstmt->getCond());  // for statement condition
-        if(opFlag == -1) {
-          break;
-        }
-        VisitBinaryOperator((BinaryOperator *)forstmt->getInc());   // +1
-        VisitStmt(forstmt->getBody());
+      Stmt * stmt = forstmt->getInit();
+      Expr * expr = forstmt->getCond();
+      // if (stmt) {
+      //     this->Visit(forstmt->getInit());
+      // }
+      this->Visit(expr);
+      while (mEnv->getCondition(expr)) {
+        this->Visit(forstmt->getBody());
+        this->Visit(forstmt->getInc());
+        this->Visit(expr);
       }
     }
     // ImplicitCastExpr
@@ -105,24 +107,38 @@ public:
       mEnv->unaryExprOrTypeTraitExpr(unaryExprOrTypeTraitExpr);
     }
     virtual void VisitArraySubscriptExpr(ArraySubscriptExpr * array) {
+      cout<< "VisitArraySubscriptExpr" << endl;
       VisitStmt(array);
       mEnv->arrayExpr(array);
    }
 
-   virtual void VisitParenExpr(ParenExpr * parenExpr) {
-   	cout << "ParenExpr " << endl;
-		VisitStmt(parenExpr);
-		mEnv->parenExpr(parenExpr);
-   } 
+    virtual void VisitParenExpr(ParenExpr * parenExpr) {
+      cout << "ParenExpr " << endl;
+      VisitStmt(parenExpr);
+      mEnv->parenExpr(parenExpr);
+    } 
 
-   virtual void VisitCStyleCastExpr(CStyleCastExpr * cStyleCastExpr) {
-   	cout << "CStyleCastExpr " << endl;
-   	VisitStmt(cStyleCastExpr);
-   	mEnv->cStyleCastExpr(cStyleCastExpr);
-   }
+    virtual void VisitCStyleCastExpr(CStyleCastExpr * cStyleCastExpr) {
+     	cout << "CStyleCastExpr " << endl;
+     	VisitStmt(cStyleCastExpr);
+     	mEnv->cStyleCastExpr(cStyleCastExpr);
+    }
+    // if 
+    virtual void VisitIfStmt(IfStmt * ifstmt) {
+      cout << "ifstmt" << endl;
+      Expr * expr = ifstmt->getCond();
+      this->Visit(expr);	
+      cout << "switch" << endl;
+      if(mEnv->getCondition(expr)) {
+        cout << "condition" << endl;
+        this->Visit(ifstmt->getThen());
+      } else if(Stmt *elseStmt = ifstmt->getElse()){
+        cout << "else" << endl;
+        this->Visit(elseStmt);
+      }
+    }
 private:
     Environment * mEnv;
-    int opFlag;
 };
 // ASTConsumer 
 class InterpreterConsumer : public ASTConsumer {
