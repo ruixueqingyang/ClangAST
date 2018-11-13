@@ -161,6 +161,7 @@ public:
 		   if(UnaryOperator * unaryop = dyn_cast<UnaryOperator>(left)){
 				cout << "binop_UnaryOperator " << endl;
 				int addr = mStack.back().getStmtVal(unaryop->getSubExpr());
+				
 				val = mStack.back().getStmtVal(right);
 				mHeap.Update(addr, val);
         	}
@@ -191,7 +192,12 @@ public:
 		   }
 		   // left * right
 		   if(opCode == BO_Mul) {
+		   	cout<< "  binop * " << endl;
 		   	mStack.back().bindStmt(bop, valLeft * valRight);
+		   }
+		   if(opCode == BO_Div) {
+		   	cout << " bindnop / " << endl;
+		   	mStack.back().bindStmt(bop, valLeft / valRight);
 		   }
 		   // left < right
 		   if(opCode == BO_LT) {
@@ -233,8 +239,7 @@ public:
 		   			int val = integer->getValue().getSExtValue();
 		   			mStack.back().bindDecl(vardecl, val);		// binder(refers next statement)			
 		   		} 
-			   } 
-			   if(vardecl->getType()->isArrayType())  {
+			   } else if(vardecl->getType()->isArrayType())  {
 			   	cout << "isArrayType" << endl;
 	            // Get array size
 	            auto array = dyn_cast<ConstantArrayType>(vardecl->getType());
@@ -247,12 +252,10 @@ public:
 	            ///logp(ArrayVisit, allocatedAddress);
 	            mStack.back().bindDecl(vardecl, address);
 	          
-			   }
-			   if(vardecl->getType()->isPointerType()) {
+			   } else if(vardecl->getType()->isPointerType()) {
 			   	cout << "vardecl is pointerType" << endl;
 			   	mStack.back().bindDecl(vardecl, 0);
-			   }
-			   else {
+			   } else {
 			   	cout<< " decl not init" << endl;
 			   	mStack.back().bindDecl(vardecl, 0);
 			   }
@@ -268,6 +271,7 @@ public:
 	   if (qualType->isPointerType() || qualType->isArrayType()) {
 	   	cout << " isPointerType || isArrayType" << endl;
 			int val = mStack.back().getDeclVal(decl);
+			cout << "decl " << decl <<  " val " << val << endl;
         	mStack.back().bindStmt(declref, val);
     	} else if (declref->getType()->isIntegerType()) {
 	   	cout<< "integer  declref " << (declref->getFoundDecl()->getNameAsString()) << " " << declref << endl;
@@ -372,6 +376,7 @@ public:
           	value = mStack.back().getStmtVal(castedExpr);
           	cout << "CK_LValueToRValue array " << castedExpr << " val " << value << endl;
           	int val = mHeap.get(value);
+          	cout << "array val " << val << endl;
            	mStack.back().bindStmt(implicitCastExpr, val);   
         }
      	}
@@ -474,8 +479,7 @@ public:
 		int addr = mStack.back().getStmtVal(left);
 		int i = mStack.back().getStmtVal(right);
 		cout << "array addr & val  " << addr << " [?] " << i << endl; 
-		int val = mHeap.get(addr + i);
-		mStack.back().bindStmt(array, val);
+		mStack.back().bindStmt(array, addr+i);
    }
 
  	int getCondition(Expr * expr) { 
