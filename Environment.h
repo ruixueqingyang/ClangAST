@@ -54,40 +54,40 @@ public:
 /// Heap maps address to a value
 
 class Heap {
-	map<int, void*>mBuf;
-   map<int, int> mContents;	
+	map<int, void*>mInt;
+   map<int, int> mData;	
 	map<void*, int>mAddr;
 public:
 	int Malloc(int size) {
-		int * addr = (int *)malloc(size * sizeof(int));
+		void * addr = malloc(size * sizeof(int));
 		int buf = (unsigned long)addr;
 		mAddr.insert(make_pair(addr, size));
-		mBuf.insert(make_pair(buf, addr));
+		mInt.insert(make_pair(buf, addr));
 		// cout<< "addr " << addr << " addr_int " << buf << endl;
       // Initialize the Content
       for (int i=0; i < size; ++i) {
-      	mContents.insert(std::make_pair(buf+i, 0));
+      	mData.insert(std::make_pair(buf+i, 0));
       }
 		return buf;
 	}
 	void Free(int address) {
-		void* addr = mBuf.find(address)->second;
+		void * addr = mInt.find(address)->second;
 		int size = mAddr.find(addr)->second;
 		// cout << "free size " << size << endl;
 		for(int i = 0; i < size; ++i) {
 
-			mContents.erase( address + i );
+			mData.erase( address + i );
 		}
-		mBuf.erase(address);
+		mInt.erase(address);
 		free(addr);
-		// cout << "mContents " << (mContents.find(address)->second) << endl;
+		// cout << "mData " << (mData.find(address)->second) << endl;
 	}
 	void Update(int address, int val) {
-   	mContents[address] = val;
+   	mData[address] = val;
 	}
 	int get(int address) {
-		if (mContents.find(address) != mContents.end())
-			return mContents.find(address)->second;
+		if (mData.find(address) != mData.end())
+			return mData.find(address)->second;
 		else 
 			return 0;
  	}
@@ -110,7 +110,6 @@ public:
    /// Get the declartions to the built-in functions
    Environment() : mStack(), mFree(NULL), mMalloc(NULL), mInput(NULL), mOutput(NULL), mEntry(NULL), mHeap() {
    }
-
 
    /// Initialize the Environment
    void init(TranslationUnitDecl * unit) {
@@ -170,8 +169,7 @@ public:
         	}
     		mStack.back().bindStmt(bop, val);
 		   
-	   } else if (bop->isComparisonOp() || bop->isAdditiveOp()
-               || bop->isMultiplicativeOp()) {
+	   } else if (bop->isAdditiveOp() || bop->isMultiplicativeOp() || bop->isComparisonOp()) {
 		   // left&right value
 		   int valLeft = mStack.back().getStmtVal(left);
 		   int valRight = mStack.back().getStmtVal(right);
@@ -239,7 +237,7 @@ public:
 			   	// cout << "isArrayType" << endl;
 	            // Get array size
 	            auto array = dyn_cast<ConstantArrayType>(vardecl->getType());
-	            int array_size = array->getSize().getLimitedValue();
+	            int array_size = array->getSize().getSExtValue();
       			// cout << "array size " << array_size << endl;
 	            //NOTE that array is placed in heap
 	            int address = mHeap.Malloc(array_size);
@@ -332,12 +330,12 @@ public:
    }
 
 	// integer
-	void integer(IntegerLiteral * integer){
+	void integerLiteral(IntegerLiteral * integer){
 		int val = integer->getValue().getSExtValue();
 		mStack.back().bindStmt(integer, val);
 	}
 
-	void implicitcast(ImplicitCastExpr* implicitCastExpr) {
+	void implicitCastExpr(ImplicitCastExpr* implicitCastExpr) {
 
  		CastKind castKind = implicitCastExpr->getCastKind();
     	Expr *castedExpr = implicitCastExpr->getSubExpr();
@@ -371,21 +369,11 @@ public:
            	mStack.back().bindStmt(implicitCastExpr, val);   
         }
      	}
-     	// else if(castKind == CK_FunctionToPointerDecay) {
-     	// 	// cout << "implicitcast_CK_FunctionToPointerDecay" << endl;
-     	// 	return;
-     	// } 
      	else if (castKind == CK_IntegralCast || castKind == CK_ArrayToPointerDecay || castKind == CK_BitCast){
         // cout << "implicitcast integer || ArraySubscriptExpr" << endl;
         int value = mStack.back().getStmtVal(castedExpr);
         mStack.back().bindStmt(implicitCastExpr, value);
     	} 
-    	// else if(castKind == CK_BitCast) {
-    	// 	int value = mStack.back().getStmtVal(castedExpr);
-    	// 	// cout << "implicitcast_CK_BitCast " << implicitCastExpr << " val " << value << endl;
-    	// 	mStack.back().bindStmt(implicitCastExpr, value);
-    	// }
-
 	}
 
 	void visitVarDecl(VarDecl * vardecl) {
@@ -401,7 +389,7 @@ public:
 		}
 	}
 
-	void setReturnVal(ReturnStmt *returnStmt) {
+	void returnStmt(ReturnStmt *returnStmt) {
 		// cout << "setReturnVal" << endl;
 		returnVal = mStack.back().getStmtVal(returnStmt->getRetValue());
 	}
@@ -416,7 +404,7 @@ public:
 		mStack.back().bindStmt(callexpr, returnVal);
 	}
 
-	void unaryOp(UnaryOperator * uop) {
+	void unaryOperator(UnaryOperator * uop) {
 		// cout << "unaop" << endl;
 		int opCode = uop->getOpcode();
 		Expr * expr = uop->getSubExpr();
@@ -463,7 +451,7 @@ public:
  	}
 
 
- 	void arrayExpr(ArraySubscriptExpr * array){
+ 	void arraySubscriptExpr(ArraySubscriptExpr * array){
 		// llvm::errs()<<"**arrayExpr**"<<"\n";
 		Expr * left = array->getBase();
 		Expr * right = array->getIdx();
@@ -474,7 +462,7 @@ public:
 		mStack.back().bindStmt(array, addr+i);
    }
 
- 	int getCondition(Expr * expr) { 
+ 	int getVal(Expr * expr) { 
  		int val = mStack.back().getStmtVal(expr);
  		return val;
  	}

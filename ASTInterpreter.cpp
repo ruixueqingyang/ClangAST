@@ -57,14 +57,14 @@ public:
     virtual void VisitIntegerLiteral(IntegerLiteral * integer) {      
       // cout << "VisitIntegerLiteral" << endl;
       // VisitStmt(integer);
-      mEnv->integer(integer);
+      mEnv->integerLiteral(integer);
     }
     // While
     virtual void VisitWhileStmt(WhileStmt * whilestmt) {
       // cout << "VisitWhileStmt" << endl;
       Expr * expr = whilestmt->getCond();
       this->Visit(expr);
-      while (mEnv->getCondition(expr)) {
+      while (mEnv->getVal(expr)) {
           this->Visit(whilestmt->getBody());
           this->Visit(expr);
       }
@@ -74,11 +74,8 @@ public:
       // cout << "VisitForStmt" << endl;
       // Stmt * stmt = forstmt->getInit();
       Expr * expr = forstmt->getCond();
-      // if (stmt) {
-      //     this->Visit(forstmt->getInit());
-      // }
       this->Visit(expr);
-      while (mEnv->getCondition(expr)) {
+      while (mEnv->getVal(expr)) {
         this->Visit(forstmt->getBody());
         this->Visit(forstmt->getInc());
         this->Visit(expr);
@@ -88,19 +85,19 @@ public:
     virtual void VisitImplicitCastExpr(ImplicitCastExpr* imcastexpr) {
       VisitStmt(imcastexpr);
       // cout<< "VisitImplicitCastExpr" << endl;
-      mEnv->implicitcast(imcastexpr);
+      mEnv->implicitCastExpr(imcastexpr);
     }
     // return
     virtual void VisitReturnStmt(ReturnStmt *returnStmt) {
         // cout<< "VisitReturnStmt" << endl;
         VisitStmt(returnStmt);
-        mEnv->setReturnVal(returnStmt);
+        mEnv->returnStmt(returnStmt);
     }
     // unary operator
     virtual void VisitUnaryOperator(UnaryOperator* uop) {
       // cout<< "VisitUnaryOperator" << endl;
       VisitStmt(uop);
-      mEnv->unaryOp(uop);
+      mEnv->unaryOperator(uop);
     }
     virtual void VisitUnaryExprOrTypeTraitExpr(UnaryExprOrTypeTraitExpr * unaryExprOrTypeTraitExpr) {
       // cout<< "VisitUnaryExprOrTypeTraitExpr" << endl;
@@ -109,7 +106,7 @@ public:
     virtual void VisitArraySubscriptExpr(ArraySubscriptExpr * array) {
       // cout<< "VisitArraySubscriptExpr" << endl;
       VisitStmt(array);
-      mEnv->arrayExpr(array);
+      mEnv->arraySubscriptExpr(array);
    }
 
     virtual void VisitParenExpr(ParenExpr * parenExpr) {
@@ -129,7 +126,7 @@ public:
       Expr * expr = ifstmt->getCond();
       this->Visit(expr);	
       // cout << "switch" << endl;
-      if(mEnv->getCondition(expr)) {
+      if(mEnv->getVal(expr)) {
         // cout << "condition" << endl;
         this->Visit(ifstmt->getThen());
       } else if(Stmt *elseStmt = ifstmt->getElse()){
